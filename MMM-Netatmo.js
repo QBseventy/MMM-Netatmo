@@ -252,6 +252,12 @@ Module.register('MMM-Netatmo', {
           if(value < 326.25) return 'NW'+ tailval;
           if(value < 348.75) return 'NNW'+ tailval;
           return 'N'+ tailval;
+	case 'health_idx': //Air Quality Health Index
+          if(value = 0) return 'Healthy';
+          if(value = 1) return 'Fine';
+          if(value = 2) return 'Fair';
+          if(value = 3) return 'Poor';
+          if(value = 4) return 'Unhealthy';
         case 'Battery':
           return value.toFixed(0) + '%';
         case 'WiFi':
