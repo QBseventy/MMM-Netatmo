@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CFenner/MagicMirror-Netatmo-Module.git"
+    "url": "https://github.com/haywirecoder/MMM-Netatmo/MagicMirror-Netatmo-Module.git"
   },
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/CFenner/MagicMirror-Netatmo-Module/issues"
+    "url": "https://github.com/haywirecoder/MMM-Netatmo/MagicMirror-Netatmo-Module/issues"
   },
-  "homepage": "https://github.com/CFenner/MagicMirror-Netatmo-Module#readme",
+  "homepage": "https://github.com/haywirecoder/MMM-Netatmo/MagicMirror-Netatmo-Module#readme",
   "devDependencies": {
     "eslint": "^2.7.0",
     "grunt": "^1.0.1",
