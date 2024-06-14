@@ -33,7 +33,7 @@ module.exports = {
     
     } catch (e) { 
       console.info(`No credential cache found, using configuration refresh token.`);
-      self.refresh_token = self.config.refreshToken;
+      self.refresh_token = self.config.refresh_token;
     } 
 
     const params = new URLSearchParams()
