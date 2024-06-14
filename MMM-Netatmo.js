@@ -1,16 +1,17 @@
+/* eslint-disable no-mixed-spaces-and-tabs */
 /* Magic Mirror
  * Module: Netatmo
  *
  * By Christopher Fenner http://github.com/CFenner
  * MIT Licensed.
  */
- /* global $, Q, moment, Module, Log */
- 
-// Mmanage the PIR and the module.hidden at the same time
-var UserPresence = true; // by default we are present (no PIR sensor to cut)
+
+/* global $, moment, Module, Log, _aqiFeed*/
+/* eslint no-undef: "error"*/
+
 var ModuleNetatmoHidden = false; /// by default  display the module (if no carousel module or other)
 
-var lastUpdateServeurNetatmo = 0; // Used to memorize the timestamp given by netatmo on the date of his info. New info every 10 min
+var lastUpdateServeurNetatmo = 0; // Used to memorize the timestamp given by netatmo on the date of this info. New info every 10 min
 var DateUpdateDataAirQuality = 0; // The last date we updated the info Air Quality min
 
 var AirQualityImpact = 'Wait..'; 
@@ -20,112 +21,63 @@ var AirQualityValue = 0; //Initial air quality
 Module.register('MMM-Netatmo', {
   // default config,
   defaults: {
-  
   //for AirQuality
   lang: null,
 	location: 'germany/berlin',
-	updateIntervalAirQuality: 600, // en secondes = every 30 minutes
-
-    
-    refreshToken: null,
-    updatesIntervalDisplay: 60, 
-    animationSpeed: 1000,
+  initialDelay: 0,
+	updateIntervalAirQuality: 600, // secondes = every 30 minutes  
+  refreshToken: null,
+  updatesIntervalDisplay: 60, 
+  animationSpeed: 1000,
 	updatesIntervalDisplayID: 0,
-    api: {
-      base: 'https://api.netatmo.com/',
-      authEndpoint: 'oauth2/token',
-      authPayload: 'grant_type=refresh_token&refresh_token={0}&client_id={1}&client_secret={2}',
-      dataEndpoint: 'api/getstationsdata',
-      dataPayload: 'access_token={0}'
-    }
+  apiBase: 'api.netatmo.com',
+  authEndpoint: '/oauth2/token',
+  dataEndpoint: '/api/getstationsdata',
+  hideLoadTimer: false,
+  mockData: false
   },
   
+  notifications: {
+    AUTH: 'NETATMO_AUTH',
+    AUTH_RESPONSE: 'NETATMO_AUTH_RESPONSE',
+    DATA: 'NETATMO_DATA',
+    DATA_RESPONSE: 'NETATMO_DATA_RESPONSE'
+  },
+
   // init method
   start: function() {
+    const self = this
     Log.info('Starting module: ' + this.name);//First time at the launch of the mirror
- 		
-	  // run upload for the first time, everyone will remember their upload date
-    this.updateLoad();
+    self.loaded = false
+    self.moduleList = []
+
+    // get a new access token at start-up. 
+    setTimeout(function () {
+      self.sendSocketNotification(self.notifications.DATA, self.config)
+    }, this.config.initialDelay * 1000)
+
+
     this.loadAirQuality();
-    // is useless because called by resume and values ​​of dates have no time to memorize before ...
-    // if it serves, because resume is not always called at startup ...
-		
-	  // set a timer to manage uploads and displays whether or not there is a presence
-	  this.config.updatesIntervalDisplayID = setInterval(() => { 
-		this.GestionUpdateIntervalNetatmo(); }, this.config.updatesIntervalDisplay*1000);
-					
-    //	Log.log("End function start, updatesIntervalDisplayID : " + this.config.updatesIntervalDisplayID);			
+    // set auto-update
+    setInterval(function () {
+      // request directly the data, with the previous token. When the token will become invalid (error 403), it will be requested again
+      self.sendSocketNotification(self.notifications.DATA, self.config)
+    }, this.config.updatesIntervalDisplay * 60 * 1000 + this.config.initialDelay * 1000)
 
   },
   
 	suspend: function() { // core called when the module is hidden
 		ModuleNetatmoHidden = true; //module hidden
 		Log.log("Suspend - Module Netatmo hidden");
-		this.GestionUpdateIntervalNetatmo(); //when called the function that handles all cases
+		//this.GestionUpdateIntervalNetatmo(); //when called the function that handles all cases
 	},
 	
 	resume: function() { // core called when the module is displayed
 		ModuleNetatmoHidden = false;
 		Log.log("Resume - Module Netatmo display");
-		this.GestionUpdateIntervalNetatmo();	
-	},
-
-	notificationReceived: function(notification, payload) {
-		if (notification === "USER_PRESENCE") { // notification sent by the MMM-PIR-Sensor module. See his doc
-			Log.log("NotificationReceived USER_PRESENCE = " + payload);
-			UserPresence = payload;
-			this.GestionUpdateIntervalNetatmo();
-		}
+		//this.GestionUpdateIntervalNetatmo();	
 	},
 	
-	GestionUpdateIntervalNetatmo: function() {
-		
-		Log.log("GestionUpdateIntervalNetatmo - Netatmo data: "
-				+ moment.unix(lastUpdateServeurNetatmo).format('dd - HH:mm:ss') + 
-				" - AirQuality data : "+ moment.unix(DateUpdateDataAirQuality).format('dd - HH:mm:ss') +
-				" - and we are : " + moment.unix(Date.now() / 1000).format('dd - HH:mm:ss'));
-
-	    // make sure to have a user present in front of the screen (sensor PIR) and that the module is well displayed
-		  if (UserPresence === true && ModuleNetatmoHidden === false){ 
-		
-			Log.log("Netatmo is displayed and user present! We need to update if necessary");
-
-			if(Date.now() / 1000 - DateUpdateDataAirQuality > this.config.updateIntervalAirQuality){
-				Log.log("Data AirQuality have more than "+ this.config.updateIntervalAirQuality + " s, update requested");
-				this.loadAirQuality();
-			}else{
-				var calcul = Date.now() / 1000 - DateUpdateDataAirQuality;
-				Log.log("Data AirQuality ont :" + calcul + 
-				"it's less "+ this.config.updateIntervalAirQuality + " s, we do not update");
-				
-			}
-				            
-			if(Date.now() / 1000 - lastUpdateServeurNetatmo > 660){// we are more than 11min after the last datas of the server -> it is necessary to update
-		
-				Log.log("Data Netatmo have more than 11 min, update requested");
-				this.updateLoad();
-			}else{
-				Log.log("Data Netatmo are less than 11 min, no update");
-			}
-
-			//Reset the update interval, if not already active (to avoid multiple instances)
-			if (this.config.updatesIntervalDisplayID === 0){		
-						
-				this.config.updatesIntervalDisplayID = setInterval(() => {
-					 this.GestionUpdateIntervalNetatmo(); }, this.config.updatesIntervalDisplay*1000);
-						
-			Log.log("Netatmo timer in place, updatesIntervalDisplayID : " + this.config.updatesIntervalDisplayID);
-
-			}
-			
-		}else{ //sinon (UserPresence = false OU ModuleHidden = true)
-			
-			clearInterval(this.config.updatesIntervalDisplayID); // stop the current update interval
-			this.config.updatesIntervalDisplayID=0; // we reset the variable
-		}
-	},
-	
-	  
 	//Air Quality
 	loadAirQuality: function(){
 
@@ -144,78 +96,53 @@ Module.register('MMM-Netatmo', {
 		
 		//We memorize the date of our data upload
 		DateUpdateDataAirQuality = Date.now() / 1000;
-		
-		//Log.log("renderAirQuality at "+ moment.unix(DateUpdateDataAirQuality).format('dd - HH:mm:ss') +" - value : " + AirQualityValue + ' - impact : '+ AirQualityImpact);
-
 	},
 
-	//fin airquality
-  
-  updateLoad: function() {
-    Log.log("Netatmo : updateLoad"); //Every 10 min (update interval), step 1 of the update
-
-    var that = this;
-    return Q.fcall(
-      this.load.token.bind(that),
-      this.renderError.bind(that)
-    ).then(
-      this.load.data.bind(that),
-      this.renderError.bind(that)
-    ).then(
-      this.renderAll.bind(that)
-      );
-  },
-  
-    
-  load: {
-    token: function() {
-			
-       //Log.log("Netatmo : load - token");
-      return Q($.ajax({
-        type: 'POST',
-        url: this.config.api.base + this.config.api.authEndpoint,
-        data: this.config.api.authPayload.format(
-            this.config.refreshToken,
-            this.config.clientId,
-            this.config.clientSecret)
-      }));
-    },
-    
-    data: function(data) {
-				
-      // Log.log("Netatmo : load - data");
-      //Log.info(this.name + " token loaded "+data.access_token);
-      this.config.refreshToken = data.refresh_token;
-      // call for station data
-      return Q($.ajax({
-        url: this.config.api.base + this.config.api.dataEndpoint,
-        data: this.config.api.dataPayload.format(data.access_token)
-      }));
-      
+  socketNotificationReceived: function (notification, payload) {
+    const self = this
+    Log.debug('received ' + notification)
+    switch (notification) {
+      case self.notifications.AUTH_RESPONSE:
+        if (payload.status === 'OK') {
+          self.sendSocketNotification(self.notifications.DATA, self.config)
+        } else {
+          Log.log('AUTH FAILED ' + payload.message)
+        }
+        break
+      case self.notifications.DATA_RESPONSE:
+        if (payload.status === 'OK') {
+          Log.log('Devices %o', payload.payloadReturn)
+          const stationList = payload.payloadReturn
+          self.renderAll(stationList)
+          self.updateDom(this.config.animationSpeed);
+        } else if (payload.status === 'INVALID_TOKEN') {
+          // node_module has no valid token, reauthenticate
+          Log.log('DATA FAILED, refreshing token')
+          self.sendSocketNotification(self.notifications.AUTH, self.config)
+        } else {
+          Log.log('DATA FAILED ' + payload.message)
+        }
+        break
     }
   },
-  
+
   renderAll: function(data) {
 
-    // Log.log("Netatmo : renderAll");
-    // Log.info(this.name + " data loaded, updated "+moment(new Date(1000*device.dashboard_data.time_utc)).fromNow());
-    var device = data.body.devices[0];
+    Log.log("Netatmo : renderAll");
+    var device = data[0];
     this.lastUpdate = device.dashboard_data.time_utc;
    	lastUpdateServeurNetatmo = device.dashboard_data.time_utc;
     // render modules
     this.dom = this.getDesign('bubbles').render(device); 
-    this.updateDom(this.config.animationSpeed);
-    return Q({});
   },
   
   renderError: function(reason) {
-    console.log("error " + reason);
+    Log.log("error " + reason);
   },
   formatter: {
     value: function(dataType, value) {
 	  
     	//  Log.log("Netatmo : formatter - value");
-
       if(!value)
         return value;
       switch (dataType) {
@@ -252,12 +179,6 @@ Module.register('MMM-Netatmo', {
           if(value < 326.25) return 'NW'+ tailval;
           if(value < 348.75) return 'NNW'+ tailval;
           return 'N'+ tailval;
-	case 'health_idx': //Air Quality Health Index
-          if(value = 0) return 'Healthy';
-          if(value = 1) return 'Fine';
-          if(value = 2) return 'Fair';
-          if(value = 3) return 'Poor';
-          if(value = 4) return 'Unhealthy';
         case 'Battery':
           return value.toFixed(0) + '%';
         case 'WiFi':
@@ -298,9 +219,7 @@ Module.register('MMM-Netatmo', {
   },
   
   getDesign: function(design){
-	      
-    //	Log.log("Netatmo : getDesign");
-    
+  	 
     var that = this;
     var formatter = this.formatter;
     var translator = this.translate;
@@ -404,8 +323,6 @@ Module.register('MMM-Netatmo', {
           
           //Defined the overall structure of the display of each element of the module (indoor, outdoor). The last line being in the getDom
           module: function(module){
-            var type;
-            var value;
             var result = $('<div/>').addClass('module').append(
                     $('<div/>').addClass('name small').append(module.module_name)
                   ).append(
@@ -430,6 +347,10 @@ Module.register('MMM-Netatmo', {
             var result = $('<td/>').addClass('displayTemp');
             var type;
             var value;
+            var valueTrend;
+            var valueMin;
+            var valueMax;
+            var TrendIcon;
             switch(module.type){
               case this.moduleType.MAIN:
               case this.moduleType.OUTDOOR:
@@ -527,13 +448,14 @@ Module.register('MMM-Netatmo', {
           displayExtra: function(module){
             var result = $('<td/>').addClass('displayExtra');
             var valueCO2 = 0;
+            var statusCO2 = 0;
             switch(module.type){
               case this.moduleType.MAIN:
                 if (module.dashboard_data === undefined)
                   valueCO2 = 1000;
                 else
                   valueCO2 = module.dashboard_data['CO2'];      
-                var statusCO2 = valueCO2 > 2000?'bad':valueCO2 > 1000?'average':'good';
+                  statusCO2 = valueCO2 > 2000?'bad':valueCO2 > 1000?'average':'good';
 
                 $('<div/>').addClass('').append(
                   $('<div/>').addClass('small value').append('CO² : ' + formatter.value('CO2', valueCO2))
@@ -545,12 +467,12 @@ Module.register('MMM-Netatmo', {
               break;
                     
               case this.moduleType.INDOOR:
-                var valueCO2 = 0;
+                valueCO2 = 0;
                 if (module.dashboard_data === undefined)
                   valueCO2 = 1000;
                 else
                   valueCO2 = module.dashboard_data['CO2'];     
-                var statusCO2 = valueCO2 > 2000?'bad':valueCO2 > 1000?'average':'good';
+                  statusCO2 = valueCO2 > 2000?'bad':valueCO2 > 1000?'average':'good';
 
                 $('<div/>').addClass('').append(
                   $('<div/>').addClass('small value').append('CO² : ' + formatter.value('CO2', valueCO2))
@@ -576,9 +498,9 @@ Module.register('MMM-Netatmo', {
 					    $('<span/>').addClass('fa fa-leaf').addClass(statusAirQuality)
 				      ).append(
 					    $('<span/>').addClass('small value').append(' AQI: ' + AirQualityValue)
-    
-             ).appendTo(result);
-                            
+              ).appendTo(result);
+              break;
+
               default:
                 break;
             }
@@ -673,20 +595,18 @@ Module.register('MMM-Netatmo', {
                 
               case this.moduleType.OUTDOOR: 
                                           
-                var valueBattery = module.battery_percent;
-                var valueRadio = module.rf_status;
-                var valueHum = 0;
+                valueBattery = module.battery_percent;
+                valueRadio = module.rf_status;
+                valueHum = 0;
                 // Set battery and radio status color
-                var statusBattery = valueBattery < 30?'textred fa fa-battery-1 fa-fw':valueBattery < 70?'fa fa-battery-2 fa-fw':'fa fa-battery-4 fa-fw';
-                var statusRadio = valueRadio < 30?'textred':'';
+                statusBattery = valueBattery < 30?'textred fa fa-battery-1 fa-fw':valueBattery < 70?'fa fa-battery-2 fa-fw':'fa fa-battery-4 fa-fw';
+                statusRadio = valueRadio < 30?'textred':'';
 
                  // Set humidity status color
                  if (module.dashboard_data === undefined)
                   valueHum = 0;
                 else
                   valueHum = module.dashboard_data['Humidity'];
-
-                var statusHum;
 
                 if (valueHum >= 40 && valueHum <= 60){
                   statusHum = '';
@@ -736,7 +656,7 @@ Module.register('MMM-Netatmo', {
                 break;
             }
             return result;
-          },
+          }
         };
       })(formatter, translator, that) // end of the bubbles design
     }[design]
@@ -779,6 +699,7 @@ Module.register('MMM-Netatmo', {
         $('<div/>')
           .addClass('updated xsmall')
           .append(moment(new Date(1000 * this.lastUpdate)).fromNow())
+          //.append(moment(new Date('December 17, 1995 03:24:00')))
       );
       if(!this.config.hideLoadTimer){
         dom.append($(
@@ -789,7 +710,7 @@ Module.register('MMM-Netatmo', {
         ));
       }
 
-    }else{
+    }else{ 
       dom.append($(
         '<svg class="loading" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">' +
         '  <circle class="outer"></circle>' +

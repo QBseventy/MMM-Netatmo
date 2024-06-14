@@ -31,10 +31,8 @@ module.exports = function(grunt) {
     }
   });
 
-  //grunt.loadNpmTasks('grunt-contrib-less');
-  //grunt.loadNpmTasks('grunt-contrib-uglify');
+
   grunt.loadNpmTasks('grunt-contrib-csslint');
-  //grunt.loadNpmTasks("grunt-contrib-eslint");
   grunt.loadNpmTasks("grunt-jsonlint");
   grunt.loadNpmTasks('grunt-yamllint');
   grunt.loadNpmTasks("gruntify-eslint");

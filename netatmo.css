@@ -44,11 +44,18 @@
   text-align: left;
 }
 .netatmo .bubbles .module .visual {
-  border-radius: 1em;
-  box-shadow: 0 0 .9em 1em;
-  height: .1em;
-  margin: 1.5em auto;
-  width: .1em;
+  border-radius: .65em;
+  box-shadow: 0 0 .9em .65em;
+  height: .65em;
+  margin: 1em auto;
+  width: .65em;
+}
+.netatmo .bubbles .module .visual-s{
+  border-radius: .55em;
+  box-shadow: 0 0 .9em .55em;
+  height: .55em;
+  margin: 1em auto;
+  width: .55em;
 }
 .netatmo .bubbles .module .good {
   background-color: #32cd32;
@@ -109,7 +116,7 @@
 
 .x-medium {
   
-  font-size:170%;
+  font-size:155%;
 }
 .netatmo .bubbles .module .name {
   text-align: left;

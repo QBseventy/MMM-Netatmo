@@ -1,4 +1,5 @@
 (function(w, d, t, f) {
+    var s, L, e;
     w[f] = w[f] || function(c, k, n) {
         s = w[f], k = s['k'] = (s['k'] || (k ? ('&k=' + k) : ''));
         s['c'] = c = (c instanceof Array) ? c : [c];
