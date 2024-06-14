@@ -21,7 +21,7 @@ To use this module, clone this repository to your __modules__ folder of your Mag
 
 `cd ~/MagicMirror/modules`
 
-`git clone https://github.com/AgP42/MMM-Netatmo.git netatmo`
+`git clone https://github.com/haywirecoder/MMM-Netatmo.git netatmo`
 
 Now just add the module to your config.js file ([config entries](#configuration)).
 
@@ -35,23 +35,7 @@ Your can register a new app [here](https://dev.netatmo.com/dev/createapp). After
 
 #### Grant Access to Your Data
 
-To allow the app to access your data, you need to send a POST request to the auth server and register the app.
-
-##### cURL
-
-One option is to use the command line tool [cURL](https://www.google.de/url?sa=t&rct=j&q=&esrc=s&source=web&cd=2&cad=rja&uact=8&ved=0ahUKEwjqgN789KnaAhUBalAKHR-NDLoQFgg2MAE&url=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FCURL&usg=AOvVaw27-lfQBHvLQPR2qsddIR6U). 
-
-```
-curl --data "grant_type=password&client_id=YOUR_CLIENT_ID&client_secret=YOUR_CLIENT_SECRET&username=YOUR_NETATMO_USERNAME&password=YOUR_NETATMO_PASSWORD&scope=read_station" "https://api.netatmo.com/oauth2/token"
-```
-
-The POST request will return the following data:
-
-```
-{"access_token":"abc","refresh_token":"xyz","scope":["read_station"],"expires_in":10800,"expire_in":10800}
-```
-
-The REFRESH_TOKEN will be needed in the [config entries](#configuration).
+To allow the app to access your data and generate  read_station token and copy refresh token
 
 ### Configuration
 
