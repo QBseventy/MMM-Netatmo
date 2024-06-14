@@ -41,7 +41,6 @@ module.exports = {
     params.append('refresh_token', self.refresh_token)
     params.append('client_id', self.config.clientId)
     params.append('client_secret', self.config.clientSecret)
-    console.info(params);
 
     try {
       const result = await fetch('https://' + self.config.apiBase + self.config.authEndpoint, {
