@@ -8,7 +8,7 @@
 
 A module to integrale informations from a Netatmo weather station into the [MagicMirror](https://github.com/MichMich/MagicMirror).
 
-![Netatmo visualisation](https://raw.githubusercontent.com/AgP42/MMM-Netatmo/master/Netatmo_NEW.png)
+![Netatmo visualisation](https://raw.githubusercontent.com/haywirecoder/MMM-Netatmo/master/Netatmo.png)
 
 ## Usage
 
