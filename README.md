@@ -54,7 +54,7 @@ The module needs the default configuration block in your config.js to work.
 		
 		clientId: '', // your app id
 		clientSecret: '', // your app secret
-		refreshToken: '' // your generated refresh token
+		refresh_token: '' // your generated refresh token
 		
 		updatesIntervalDisplay: 60, //en sec. Delais pour aller voir si besoin d'actualiser netatmo et airquality
     		animationSpeed: 1000,
