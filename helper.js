@@ -10,7 +10,7 @@ const tokenCacheFileName = "token_cache.json";
 
 module.exports = {
   notifications: {
-    AUTH: 'NETATMO_AUTH',
+    AUTH: 'NETATMO_OUTH2',
     AUTH_RESPONSE: 'NETATMO_AUTH_RESPONSE',
     DATA: 'NETATMO_DATA',
     DATA_RESPONSE: 'NETATMO_DATA_RESPONSE',
@@ -23,25 +23,27 @@ module.exports = {
   authenticate: async function (config) {
     const self = this
     self.config = config
-
-    try {
-      const jsonData = fs.readFileSync(path.join(__dirname, tokenCacheFileName));
-      var authorization_cacheData = JSON.parse(jsonData)
-      self.refresh_token = authorization_cacheData.refresh_token;
-      var refreshTimeoutmillis = Math.floor(authorization_cacheData.auth_token_expiry - Date.now());
-      console.info(`Token is validate for: ${Math.floor((refreshTimeoutmillis / (1000 * 60 * 60)) % 24)} hour(s) and ${Math.floor((refreshTimeoutmillis / (1000 * 60 )) % 60)} min(s).`);
-    
-    } catch (e) { 
-      console.info(`No credential cache found, using configuration refresh token.`);
-      self.refresh_token = self.config.refresh_token;
-    } 
+    if (!self.refresh_token) 
+    {
+      try {
+        const jsonData = fs.readFileSync(path.join(__dirname, tokenCacheFileName));
+        var authorization_cacheData = JSON.parse(jsonData)
+        self.refresh_token = authorization_cacheData.refresh_token;
+        console.info(`Using cache refresh token....`);
+       
+       } catch (e) { 
+          console.info(`No cache refresh token found, using configuration refresh token.`);
+          self.refresh_token = self.config.refresh_token;
+      } 
+    } else console.info(`Refreshing in memory token....`);
 
     const params = new URLSearchParams()
     params.append('grant_type', 'refresh_token')
     params.append('refresh_token', self.refresh_token)
     params.append('client_id', self.config.clientId)
     params.append('client_secret', self.config.clientSecret)
-
+    //console.log(params)
+    
     try {
       const result = await fetch('https://' + self.config.apiBase + self.config.authEndpoint, {
         method: 'POST',
@@ -52,7 +54,7 @@ module.exports = {
       if (result.error) {
         throw new Error(result.error)
       }
-
+     
       // we got a new token, save it to main file to allow it to request the data
       console.log('Updating Tokens ...')
       self.token = result.access_token
@@ -71,12 +73,19 @@ module.exports = {
         if (error) {
             // logging the error
             console.log("error " + error);
-        } else console.log('Caching updated Refresh Token successful.')
+        } else {
+          console.log('Caching Refresh Token successful.')
+          var refreshTimeoutmillis = Math.floor(authorization_data.auth_token_expiry - Date.now());
+          console.info(`Refresh token is validate for: ${Math.floor((refreshTimeoutmillis / (1000 * 60 * 60)) % 24)} hour(s) and ${Math.floor((refreshTimeoutmillis / (1000 * 60 )) % 60)} min(s).`);
+        }  
       });
       
       self.sendSocketNotification(self.notifications.AUTH_RESPONSE, {
+        expiry: result.expires_in,
         status: 'OK',
+
       })
+    
     } catch (error) {
       console.log('error:', error)
       self.sendSocketNotification(self.notifications.AUTH_RESPONSE, {
